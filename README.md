@@ -1,6 +1,6 @@
 download the raw file. 
 after you do so, press win + R and type shell:startup
-copy a shortcut version of the compiled executable file and paste it there Console App.exe.
+copy a shortcut version of the compiled executable file and paste it there (Console App.exe).
 restart your pc and test out the features.
 F1 pauses/plays music.
 F2 goes to the previous.
