@@ -23,10 +23,11 @@ void prevTrack() {
     simulateKeyPress(VK_MEDIA_PREV_TRACK);
 }
 
-int main() {
-    RegisterHotKey(NULL, 1, MOD_NOREPEAT, VK_F5);
-    RegisterHotKey(NULL, 2, MOD_NOREPEAT, VK_F6);
-    RegisterHotKey(NULL, 3, MOD_NOREPEAT, VK_F7);
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    // Register global hotkeys
+    RegisterHotKey(NULL, 1, MOD_NOREPEAT, VK_F1);  // Play/Pause
+    RegisterHotKey(NULL, 2, MOD_NOREPEAT, VK_F2);  // Next Track
+    RegisterHotKey(NULL, 3, MOD_NOREPEAT, VK_F3);  // Previous Track
 
     MSG msg = { 0 };
     while (GetMessage(&msg, NULL, 0, 0)) {
@@ -36,10 +37,10 @@ int main() {
                 playPause();
                 break;
             case 2:
-                nextTrack();
+                prevTrack();
                 break;
             case 3:
-                prevTrack();
+                nextTrack();
                 break;
             }
         }
