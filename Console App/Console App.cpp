@@ -1,5 +1,6 @@
 #include <windows.h>
-#include <iostream>
+
+bool isMenuKeyDown = false;
 
 void simulateKeyPress(WORD vk) {
     INPUT input[2] = {};
@@ -35,37 +36,47 @@ void muteUnmute() {
     simulateKeyPress(VK_VOLUME_MUTE);
 }
 
+void handleHotkey(int id) {
+    if (isMenuKeyDown) {
+        switch (id) {
+        case 1:
+            prevTrack();
+            break;
+        case 2:
+            playPause();
+            break;
+        case 3:
+            nextTrack();
+            break;
+        case 4:
+            volumeUp();
+            break;
+        case 5:
+            volumeDown();
+            break;
+        case 6:
+            muteUnmute();
+            break;
+        }
+    }
+}
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    // Register global hotkeys
-    RegisterHotKey(NULL, 1, MOD_NOREPEAT, VK_F2);  // Play/Pause
-    RegisterHotKey(NULL, 2, MOD_NOREPEAT, VK_F3);  // Next Track
-    RegisterHotKey(NULL, 3, MOD_NOREPEAT, VK_F1);  // Previous Track
-    RegisterHotKey(NULL, 4, MOD_NOREPEAT, VK_F8);  // Volume Up
-    RegisterHotKey(NULL, 5, MOD_NOREPEAT, VK_F7);  // Volume Down
-    RegisterHotKey(NULL, 6, MOD_NOREPEAT, VK_F6); // Mute/Unmute
+    RegisterHotKey(NULL, 1, MOD_NOREPEAT, VK_F1);  // Previous Track
+    RegisterHotKey(NULL, 2, MOD_NOREPEAT, VK_F2);  // Play/Pause
+    RegisterHotKey(NULL, 3, MOD_NOREPEAT, VK_F3);  // Next Track
+    RegisterHotKey(NULL, 4, MOD_NOREPEAT, VK_F7);  // Volume Up
+    RegisterHotKey(NULL, 5, MOD_NOREPEAT, VK_F6);  // Volume Down
+    RegisterHotKey(NULL, 6, MOD_NOREPEAT, VK_F5);  // Mute/Unmute
+    RegisterHotKey(NULL, 7, MOD_NOREPEAT, VK_APPS); // Menu Key
 
     MSG msg = { 0 };
+
     while (GetMessage(&msg, NULL, 0, 0)) {
         if (msg.message == WM_HOTKEY) {
-            switch (msg.wParam) {
-            case 1:
-                playPause();
-                break;
-            case 2:
-                nextTrack();
-                break;
-            case 3:
-                prevTrack();
-                break;
-            case 4:
-                volumeUp();
-                break;
-            case 5:
-                volumeDown();
-                break;
-            case 6:
-                muteUnmute();
-                break;
+            isMenuKeyDown = (GetAsyncKeyState(VK_APPS) & 0x8000) != 0; // Check if Menu key is held down
+            if (isMenuKeyDown) {
+                handleHotkey(msg.wParam);
             }
         }
     }
