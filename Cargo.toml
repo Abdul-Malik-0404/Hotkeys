@@ -1,0 +1,22 @@
+[package]
+name = "hotkeys"
+version = "0.1.0"
+edition = "2021"
+description = "Cross-platform customizable global hotkey and key-remapping daemon with GUI"
+
+[dependencies]
+anyhow = "1.0"
+dirs = "6.0"
+eframe = { version = "0.29.1", default-features = false, features = ["glow", "wayland", "x11", "default_fonts"] }
+egui = { version = "0.29.1", default-features = false, features = ["default_fonts"] }
+log = "0.4"
+env_logger = "0.11"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.9"
+uuid = { version = "1.24", features = ["v4", "serde"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+evdev = "0.13.2"
+ksni = { version = "0.3.6", features = ["blocking"] }
+libc = "0.2"
+nix = { version = "0.30", features = ["poll", "fs"] }
