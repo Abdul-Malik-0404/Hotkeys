@@ -139,6 +139,12 @@ pub struct MacOsBackend {
 
 unsafe impl Send for MacOsBackend {}
 
+impl Default for MacOsBackend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MacOsBackend {
     pub fn new() -> Self {
         let mut backend = Self {

@@ -1,4 +1,6 @@
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Receiver};
+#[cfg(target_os = "linux")]
+use std::sync::mpsc::Sender;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TrayCommand {
@@ -76,6 +78,7 @@ impl ksni::Tray for LinuxTray {
 }
 
 impl TrayController {
+    #[allow(unused_variables)]
     pub fn spawn(initial_enabled: bool) -> Self {
         #[allow(unused_variables)]
         let (tx, rx) = mpsc::channel();

@@ -37,6 +37,12 @@ pub struct LinuxBackend {
     init_warning: Option<String>,
 }
 
+impl Default for LinuxBackend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LinuxBackend {
     pub fn new() -> Self {
         let mut init_warning = None;

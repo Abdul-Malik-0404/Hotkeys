@@ -19,4 +19,3 @@ uuid = { version = "1.24", features = ["v4", "serde"] }
 evdev = "0.13.2"
 ksni = { version = "0.3.6", features = ["blocking"] }
 libc = "0.2"
-nix = { version = "0.30", features = ["poll", "fs"] }

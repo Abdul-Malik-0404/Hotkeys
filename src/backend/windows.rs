@@ -97,6 +97,12 @@ pub struct WindowsBackend {
     global_enabled: bool,
 }
 
+impl Default for WindowsBackend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WindowsBackend {
     pub fn new() -> Self {
         Self {
