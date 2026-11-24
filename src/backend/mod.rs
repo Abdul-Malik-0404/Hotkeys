@@ -1,6 +1,4 @@
 pub mod keymap;
-#[cfg(target_os = "linux")]
-pub mod linux;
 #[cfg(any(target_os = "macos", test))]
 #[allow(dead_code)]
 pub mod macos;
@@ -32,10 +30,6 @@ pub trait PlatformBackend: Send {
 }
 
 pub fn create_default_backend() -> Box<dyn PlatformBackend> {
-    #[cfg(target_os = "linux")]
-    {
-        Box::new(linux::LinuxBackend::new())
-    }
     #[cfg(target_os = "windows")]
     {
         Box::new(windows::WindowsBackend::new())
@@ -44,7 +38,7 @@ pub fn create_default_backend() -> Box<dyn PlatformBackend> {
     {
         Box::new(macos::MacOsBackend::new())
     }
-    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         Box::new(MockBackend::new())
     }
