@@ -32,24 +32,24 @@ pub fn configure_visuals(ctx: &egui::Context) {
     let rounding = Rounding::same(6.0);
     visuals.widgets.noninteractive.rounding = rounding;
     visuals.widgets.noninteractive.bg_fill = BG_PANEL;
-    visuals.widgets.noninteractive.bg_stroke = Stroke::new(1.0, BORDER_SUBTLE);
+    visuals.widgets.noninteractive.bg_stroke = Stroke::new(1.0_f32, BORDER_SUBTLE);
 
     visuals.widgets.inactive.rounding = rounding;
     visuals.widgets.inactive.bg_fill = BG_KEYCAP;
     visuals.widgets.inactive.weak_bg_fill = BG_KEYCAP;
-    visuals.widgets.inactive.bg_stroke = Stroke::new(1.0, BORDER_SUBTLE);
+    visuals.widgets.inactive.bg_stroke = Stroke::new(1.0_f32, BORDER_SUBTLE);
 
     visuals.widgets.hovered.rounding = rounding;
     visuals.widgets.hovered.bg_fill = Color32::from_rgb(52, 62, 84);
     visuals.widgets.hovered.weak_bg_fill = Color32::from_rgb(52, 62, 84);
-    visuals.widgets.hovered.bg_stroke = Stroke::new(1.0, BORDER_ACCENT);
+    visuals.widgets.hovered.bg_stroke = Stroke::new(1.0_f32, BORDER_ACCENT);
 
     visuals.widgets.active.rounding = rounding;
     visuals.widgets.active.bg_fill = Color32::from_rgb(62, 76, 104);
-    visuals.widgets.active.bg_stroke = Stroke::new(1.5, BORDER_ACCENT);
+    visuals.widgets.active.bg_stroke = Stroke::new(1.5_f32, BORDER_ACCENT);
 
     visuals.selection.bg_fill = Color32::from_rgb(47, 94, 166);
-    visuals.selection.stroke = Stroke::new(1.0, BORDER_ACCENT);
+    visuals.selection.stroke = Stroke::new(1.0_f32, BORDER_ACCENT);
     ctx.set_visuals(visuals);
 
     let mut style = (*ctx.style()).clone();
@@ -231,7 +231,7 @@ impl HotkeysApp {
                         .color(COLOR_WARN)
                         .strong(),
                 )
-                .stroke(Stroke::new(1.5, COLOR_WARN))
+                .stroke(Stroke::new(1.5_f32, COLOR_WARN))
                 .fill(Color32::from_rgb(56, 44, 24))
             } else {
                 egui::Button::new(
@@ -241,7 +241,7 @@ impl HotkeysApp {
                         .color(Color32::from_rgb(232, 238, 250)),
                 )
                 .fill(BG_KEYCAP)
-                .stroke(Stroke::new(1.0, BORDER_SUBTLE))
+                .stroke(Stroke::new(1.0_f32, BORDER_SUBTLE))
             };
 
             if ui
@@ -294,7 +294,7 @@ impl HotkeysApp {
             .frame(
                 egui::Frame::none()
                     .fill(BG_PANEL)
-                    .stroke(Stroke::new(1.0, BORDER_SUBTLE))
+                    .stroke(Stroke::new(1.0_f32, BORDER_SUBTLE))
                     .inner_margin(Margin::symmetric(12.0, 8.0)),
             )
             .show(ctx, |ui| {
@@ -349,7 +349,7 @@ impl HotkeysApp {
                 egui::Frame::none()
                     .fill(Color32::from_rgb(12, 14, 20))
                     .rounding(Rounding::same(6.0))
-                    .stroke(Stroke::new(1.0, BORDER_SUBTLE))
+                    .stroke(Stroke::new(1.0_f32, BORDER_SUBTLE))
                     .inner_margin(Margin::symmetric(8.0, 6.0))
                     .show(ui, |ui| {
                         egui::ScrollArea::vertical()
@@ -428,7 +428,7 @@ impl eframe::App for HotkeysApp {
             .frame(
                 egui::Frame::none()
                     .fill(BG_PANEL)
-                    .stroke(Stroke::new(1.0, BORDER_SUBTLE))
+                    .stroke(Stroke::new(1.0_f32, BORDER_SUBTLE))
                     .inner_margin(Margin::symmetric(14.0, 10.0)),
             )
             .show(ctx, |ui| {
@@ -458,7 +458,7 @@ impl eframe::App for HotkeysApp {
                     let status_btn =
                         egui::Button::new(RichText::new(badge_text).color(badge_color).strong())
                             .fill(badge_bg)
-                            .stroke(Stroke::new(1.0, badge_color));
+                            .stroke(Stroke::new(1.0_f32, badge_color));
                     if ui
                         .add(status_btn)
                         .on_hover_text("Click to pause or resume all global hotkeys")
@@ -556,7 +556,7 @@ impl eframe::App for HotkeysApp {
             .frame(
                 egui::Frame::none()
                     .fill(BG_BASE)
-                    .stroke(Stroke::new(1.0, BORDER_SUBTLE))
+                    .stroke(Stroke::new(1.0_f32, BORDER_SUBTLE))
                     .inner_margin(Margin::symmetric(14.0, 6.0)),
             )
             .show(ctx, |ui| {
@@ -605,7 +605,7 @@ impl eframe::App for HotkeysApp {
                     egui::Frame::none()
                         .fill(Color32::from_rgb(56, 34, 20))
                         .rounding(Rounding::same(8.0))
-                        .stroke(Stroke::new(1.0, COLOR_WARN))
+                        .stroke(Stroke::new(1.0_f32, COLOR_WARN))
                         .inner_margin(Margin::symmetric(12.0, 8.0))
                         .show(ui, |ui| {
                             for warn in &self.engine.warnings {
@@ -648,9 +648,9 @@ impl eframe::App for HotkeysApp {
 
                             let row_id = rule.id;
                             let card_stroke = if rule.enabled {
-                                Stroke::new(1.0, BORDER_SUBTLE)
+                                Stroke::new(1.0_f32, BORDER_SUBTLE)
                             } else {
-                                Stroke::new(1.0, Color32::from_rgb(36, 41, 54))
+                                Stroke::new(1.0_f32, Color32::from_rgb(36, 41, 54))
                             };
 
                             egui::Frame::none()
