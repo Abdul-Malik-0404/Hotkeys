@@ -33,6 +33,9 @@ impl HotkeyEngine {
     pub fn sync_backend(&mut self) -> Result<()> {
         let effective_enabled = self.config.global_enabled && !self.recording_active;
         let mut warnings = Self::find_duplicate_triggers(&self.config.rules);
+        for w in &warnings {
+            log::warn!("{}", w);
+        }
         let backend_warnings = self
             .backend
             .apply_rules(&self.config.rules, effective_enabled)?;
@@ -42,12 +45,19 @@ impl HotkeyEngine {
             }
         }
         self.warnings = warnings;
+        log::debug!(
+            "Synced backend: {} rule(s), effective_enabled={}, warnings={}",
+            self.config.rules.len(),
+            effective_enabled,
+            self.warnings.len()
+        );
         Ok(())
     }
 
     pub fn set_recording_active(&mut self, active: bool) -> Result<()> {
         if self.recording_active != active {
             self.recording_active = active;
+            log::debug!("Key recording mode set to {}", active);
             self.sync_backend()?;
         }
         Ok(())
@@ -61,6 +71,13 @@ impl HotkeyEngine {
         for id in &fired_ids {
             self.total_triggers_count += 1;
             if let Some(rule) = self.config.rules.iter().find(|r| r.id == *id) {
+                log::info!(
+                    "Rule triggered (#{}): '{}' ({} -> {})",
+                    self.total_triggers_count,
+                    rule.name,
+                    rule.trigger,
+                    rule.target
+                );
                 self.last_triggered_rule = Some(format!(
                     "{} ({} -> {})",
                     rule.name, rule.trigger, rule.target
@@ -71,6 +88,7 @@ impl HotkeyEngine {
     }
 
     pub fn test_rule_output(&mut self, target: &KeyCombo) -> Result<()> {
+        log::info!("Testing manual target key combo: {}", target);
         self.backend.send_combo(target, None)
     }
 

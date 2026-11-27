@@ -75,11 +75,30 @@ impl AppConfig {
     pub fn load() -> Result<Self> {
         let path = Self::default_config_path()?;
         if !path.exists() {
+            log::info!(
+                "No config found at {}; creating default keybind rules",
+                path.display()
+            );
             let cfg = Self::default();
-            let _ = cfg.save_to_path(&path);
+            if let Err(err) = cfg.save_to_path(&path) {
+                log::warn!("Failed to write initial default config: {}", err);
+            }
             return Ok(cfg);
         }
-        Self::load_from_path(&path)
+        match Self::load_from_path(&path) {
+            Ok(cfg) => {
+                log::info!(
+                    "Loaded {} keybind rule(s) from {}",
+                    cfg.rules.len(),
+                    path.display()
+                );
+                Ok(cfg)
+            }
+            Err(err) => {
+                log::error!("Failed to load config from {}: {}", path.display(), err);
+                Err(err)
+            }
+        }
     }
 
     pub fn load_from_path(path: &Path) -> Result<Self> {
@@ -92,7 +111,13 @@ impl AppConfig {
 
     pub fn save(&self) -> Result<()> {
         let path = Self::default_config_path()?;
-        self.save_to_path(&path)
+        self.save_to_path(&path)?;
+        log::info!(
+            "Saved {} keybind rule(s) to {}",
+            self.rules.len(),
+            path.display()
+        );
+        Ok(())
     }
 
     pub fn save_to_path(&self, path: &Path) -> Result<()> {

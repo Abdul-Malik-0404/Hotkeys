@@ -30,6 +30,16 @@ impl Modifiers {
     pub const fn is_empty(&self) -> bool {
         !self.ctrl && !self.alt && !self.shift && !self.meta
     }
+
+    pub const fn meta_label() -> &'static str {
+        if cfg!(target_os = "windows") {
+            "Win"
+        } else if cfg!(target_os = "macos") {
+            "Cmd"
+        } else {
+            "Super"
+        }
+    }
 }
 
 impl fmt::Display for Modifiers {
@@ -45,7 +55,7 @@ impl fmt::Display for Modifiers {
             parts.push("Shift");
         }
         if self.meta {
-            parts.push("Super");
+            parts.push(Self::meta_label());
         }
         write!(f, "{}", parts.join(" + "))
     }
