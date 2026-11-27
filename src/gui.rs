@@ -256,10 +256,7 @@ impl eframe::App for HotkeysApp {
                     if ui.button("+ Add Keybind").clicked() {
                         let new_rule = KeybindRule::new(
                             format!("Custom Rule {}", self.engine.config.rules.len() + 1),
-                            KeyCombo::new(
-                                Modifiers::new(true, true, false, false),
-                                LogicalKey::F8,
-                            ),
+                            KeyCombo::new(Modifiers::new(true, true, false, false), LogicalKey::F8),
                             KeyCombo::bare(LogicalKey::MediaPlayPause),
                         );
                         self.engine.config.rules.push(new_rule);

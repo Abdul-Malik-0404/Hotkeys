@@ -328,7 +328,11 @@ impl PlatformBackend for MacOsBackend {
         Ok(fired)
     }
 
-    fn send_combo(&mut self, combo: &KeyCombo, _held_trigger_mods: Option<Modifiers>) -> Result<()> {
+    fn send_combo(
+        &mut self,
+        combo: &KeyCombo,
+        _held_trigger_mods: Option<Modifiers>,
+    ) -> Result<()> {
         match to_macos_key(combo.key) {
             MacOsKeyTarget::VirtualKey(vk) => {
                 let flags = Self::cg_event_flags(combo.modifiers);

@@ -122,10 +122,7 @@ mod tests {
             combo: &KeyCombo,
             held_trigger_mods: Option<Modifiers>,
         ) -> Result<()> {
-            self.0
-                .lock()
-                .unwrap()
-                .send_combo(combo, held_trigger_mods)
+            self.0.lock().unwrap().send_combo(combo, held_trigger_mods)
         }
 
         fn status_summary(&self) -> String {
@@ -137,8 +134,7 @@ mod tests {
     fn test_engine_dispatches_mapped_key_combo() {
         let mock = Arc::new(Mutex::new(MockBackend::new()));
         let cfg = AppConfig::default();
-        let mut engine =
-            HotkeyEngine::new(cfg, Box::new(SharedMockBackend(mock.clone()))).unwrap();
+        let mut engine = HotkeyEngine::new(cfg, Box::new(SharedMockBackend(mock.clone()))).unwrap();
 
         let alt_f2 = KeyCombo::new(Modifiers::new(false, true, false, false), LogicalKey::F2);
         mock.lock().unwrap().simulate_user_hotkey(alt_f2);
@@ -156,8 +152,7 @@ mod tests {
     fn test_engine_pauses_while_recording_or_disabled() {
         let mock = Arc::new(Mutex::new(MockBackend::new()));
         let cfg = AppConfig::default();
-        let mut engine =
-            HotkeyEngine::new(cfg, Box::new(SharedMockBackend(mock.clone()))).unwrap();
+        let mut engine = HotkeyEngine::new(cfg, Box::new(SharedMockBackend(mock.clone()))).unwrap();
 
         engine.set_recording_active(true).unwrap();
         let alt_f1 = KeyCombo::new(Modifiers::new(false, true, false, false), LogicalKey::F1);

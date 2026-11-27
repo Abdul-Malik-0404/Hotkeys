@@ -102,7 +102,11 @@ impl PlatformBackend for MockBackend {
         Ok(fired)
     }
 
-    fn send_combo(&mut self, combo: &KeyCombo, _held_trigger_mods: Option<Modifiers>) -> Result<()> {
+    fn send_combo(
+        &mut self,
+        combo: &KeyCombo,
+        _held_trigger_mods: Option<Modifiers>,
+    ) -> Result<()> {
         self.emitted_combos.push(*combo);
         Ok(())
     }

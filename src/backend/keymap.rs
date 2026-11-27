@@ -119,13 +119,13 @@ pub const fn to_macos_key(key: LogicalKey) -> MacOsKeyTarget {
     use MacOsKeyTarget::{MediaKey, VirtualKey};
     match key {
         // IOKit / hidsystem NX_KEYTYPE constants for macOS media & volume keys
-        LogicalKey::VolumeUp => MediaKey(0),       // NX_KEYTYPE_SOUND_UP
-        LogicalKey::VolumeDown => MediaKey(1),     // NX_KEYTYPE_SOUND_DOWN
-        LogicalKey::VolumeMute => MediaKey(7),     // NX_KEYTYPE_MUTE
+        LogicalKey::VolumeUp => MediaKey(0), // NX_KEYTYPE_SOUND_UP
+        LogicalKey::VolumeDown => MediaKey(1), // NX_KEYTYPE_SOUND_DOWN
+        LogicalKey::VolumeMute => MediaKey(7), // NX_KEYTYPE_MUTE
         LogicalKey::MediaPlayPause => MediaKey(16), // NX_KEYTYPE_PLAY
         LogicalKey::MediaNextTrack => MediaKey(17), // NX_KEYTYPE_NEXT
         LogicalKey::MediaPrevTrack => MediaKey(18), // NX_KEYTYPE_PREVIOUS
-        LogicalKey::MediaStop => MediaKey(19),      // NX_KEYTYPE_FAST (or Stop)
+        LogicalKey::MediaStop => MediaKey(19), // NX_KEYTYPE_FAST (or Stop)
 
         // ANSI Quartz Virtual Keycodes (Events.h)
         LogicalKey::A => VirtualKey(0x00),
@@ -194,15 +194,15 @@ pub const fn to_macos_key(key: LogicalKey) -> MacOsKeyTarget {
         LogicalKey::F11 => VirtualKey(0x67),
         LogicalKey::PrintScreen => VirtualKey(0x69), // kVK_F13 / PrintScreen on Mac keyboards
         LogicalKey::F16 => VirtualKey(0x6A),
-        LogicalKey::ScrollLock => VirtualKey(0x6B),  // kVK_F14 / ScrollLock
+        LogicalKey::ScrollLock => VirtualKey(0x6B), // kVK_F14 / ScrollLock
         LogicalKey::F10 => VirtualKey(0x6D),
         LogicalKey::ContextMenu => VirtualKey(0x6E), // kVK_ContextualMenu
         LogicalKey::F12 => VirtualKey(0x6F),
-        LogicalKey::Pause => VirtualKey(0x71),       // kVK_F15 / Pause
-        LogicalKey::Insert => VirtualKey(0x72),      // kVK_Help / Insert
+        LogicalKey::Pause => VirtualKey(0x71), // kVK_F15 / Pause
+        LogicalKey::Insert => VirtualKey(0x72), // kVK_Help / Insert
         LogicalKey::Home => VirtualKey(0x73),
         LogicalKey::PageUp => VirtualKey(0x74),
-        LogicalKey::Delete => VirtualKey(0x75),      // kVK_ForwardDelete
+        LogicalKey::Delete => VirtualKey(0x75), // kVK_ForwardDelete
         LogicalKey::F4 => VirtualKey(0x76),
         LogicalKey::End => VirtualKey(0x77),
         LogicalKey::F2 => VirtualKey(0x78),
@@ -224,8 +224,8 @@ pub const fn to_macos_key(key: LogicalKey) -> MacOsKeyTarget {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
     use super::*;
+    use std::collections::HashSet;
 
     #[test]
     fn test_win32_vk_unique_mapping() {

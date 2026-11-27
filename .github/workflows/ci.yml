@@ -1,4 +1,4 @@
-name: Build & Test Matrix (Windows & macOS)
+name: CI (Build, Test, Lint & Security)
 
 on:
   push:
@@ -6,9 +6,56 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
-  check-and-test:
+  quality-gates:
+    name: Format & Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Verify formatting (rustfmt)
+        run: cargo fmt --all -- --check
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@cargo-audit
+
+      - name: Run RustSec advisory audit
+        shell: bash
+        run: |
+          set +e
+          cargo audit --deny yanked 2>&1 | tee audit.log
+          AUDIT_EXIT=$?
+          set -e
+          {
+            echo "### Cargo Security Audit"
+            echo '```'
+            cat audit.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$AUDIT_EXIT" -ne 0 ]; then
+            echo "::warning::cargo-audit reported advisories (exit code $AUDIT_EXIT). Review the step summary."
+          fi
+
+  build-and-test:
     name: Build & Test (${{ matrix.os }})
+    needs: quality-gates
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -28,19 +75,23 @@ jobs:
       - name: Install Rust stable toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy, rustfmt
+          components: clippy
+
+      - name: Cache Cargo dependencies and build artifacts
+        uses: Swatinem/rust-cache@v2
 
       - name: Run unit & keymap verification tests
-        run: cargo test --verbose
+        run: cargo test --locked --verbose
 
       - name: Run Clippy lints
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --locked --all-targets -- -D warnings
 
       - name: Build release binary
-        run: cargo build --release --verbose
+        run: cargo build --locked --release --verbose
 
-      - name: Upload release binary artifact
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.binary_path }}
+          retention-days: 14
