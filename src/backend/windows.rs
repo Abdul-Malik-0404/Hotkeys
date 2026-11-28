@@ -139,6 +139,7 @@ pub struct WindowsBackend {
     worker_thread_id: u32,
     worker_handle: Option<JoinHandle<()>>,
     fired_queue: Arc<Mutex<VecDeque<Uuid>>>,
+    wake_tx: Arc<Mutex<Option<Sender<()>>>>,
     active_count: usize,
 }
 
@@ -154,11 +155,13 @@ impl WindowsBackend {
         let (tid_tx, tid_rx) = mpsc::channel();
         let fired_queue = Arc::new(Mutex::new(VecDeque::new()));
         let worker_fired = Arc::clone(&fired_queue);
+        let wake_tx: Arc<Mutex<Option<Sender<()>>>> = Arc::new(Mutex::new(None));
+        let worker_wake = Arc::clone(&wake_tx);
 
         let worker_handle = thread::Builder::new()
             .name("win32-hotkey-pump".to_string())
             .spawn(move || {
-                Self::run_worker(cmd_rx, tid_tx, worker_fired);
+                Self::run_worker(cmd_rx, tid_tx, worker_fired, worker_wake);
             })
             .ok();
 
@@ -173,6 +176,7 @@ impl WindowsBackend {
             worker_thread_id,
             worker_handle,
             fired_queue,
+            wake_tx,
             active_count: 0,
         }
     }
@@ -194,6 +198,7 @@ impl WindowsBackend {
         cmd_rx: Receiver<WorkerCommand>,
         tid_tx: Sender<u32>,
         fired_queue: Arc<Mutex<VecDeque<Uuid>>>,
+        wake_tx: Arc<Mutex<Option<Sender<()>>>>,
     ) {
         let mut msg: Msg = unsafe { zeroed() };
         // Force the OS to create the thread's Win32 message queue before exposing its thread ID.
@@ -268,8 +273,15 @@ impl WindowsBackend {
                                     target,
                                     err
                                 );
-                            } else if let Ok(mut q) = fired_queue.lock() {
-                                q.push_back(rule_id);
+                            } else {
+                                if let Ok(mut q) = fired_queue.lock() {
+                                    q.push_back(rule_id);
+                                }
+                                if let Ok(guard) = wake_tx.lock() {
+                                    if let Some(tx) = &*guard {
+                                        let _ = tx.send(());
+                                    }
+                                }
                             }
                         } else {
                             log::warn!("WM_HOTKEY received for unknown id={}", id);
@@ -294,6 +306,7 @@ impl WindowsBackend {
         cmd_rx: Receiver<WorkerCommand>,
         tid_tx: Sender<u32>,
         _fired_queue: Arc<Mutex<VecDeque<Uuid>>>,
+        _wake_tx: Arc<Mutex<Option<Sender<()>>>>,
     ) {
         let _ = tid_tx.send(0);
         while let Ok(cmd) = cmd_rx.recv() {
@@ -597,6 +610,12 @@ impl PlatformBackend for WindowsBackend {
             "Windows Win32 Thread Backend (tid={}, {} active shortcut(s))",
             self.worker_thread_id, self.active_count
         )
+    }
+
+    fn set_wake_sender(&mut self, tx: Sender<()>) {
+        if let Ok(mut guard) = self.wake_tx.lock() {
+            *guard = Some(tx);
+        }
     }
 }
 

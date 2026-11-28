@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use std::fs::{self, File, OpenOptions};
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -93,23 +93,25 @@ pub fn default_log_file_path() -> PathBuf {
     }
 }
 
-fn open_log_file(path: &Path) -> Option<File> {
+fn open_log_file(path: &Path, rotate_if_large: bool) -> Option<File> {
     if let Some(parent) = path.parent() {
         let _ = fs::create_dir_all(parent);
     }
-    if let Ok(meta) = fs::metadata(path) {
-        if meta.len() > MAX_LOG_FILE_BYTES {
-            let backup = path.with_extension("log.1");
-            let _ = fs::rename(path, backup);
+    if rotate_if_large {
+        if let Ok(meta) = fs::metadata(path) {
+            if meta.len() > MAX_LOG_FILE_BYTES {
+                let backup = path.with_extension("log.1");
+                let _ = fs::rename(path, backup);
+            }
         }
     }
     OpenOptions::new().create(true).append(true).open(path).ok()
 }
 
-pub fn init_logger() -> PathBuf {
+pub fn init_logger(rotate_if_large: bool) -> PathBuf {
     let path = default_log_file_path();
     let _ = LOGGER_STATE.get_or_init(|| {
-        let file = open_log_file(&path);
+        let file = open_log_file(&path, rotate_if_large);
         Mutex::new(LoggerState {
             entries: VecDeque::with_capacity(MAX_MEMORY_ENTRIES),
             log_path: path.clone(),
@@ -121,7 +123,7 @@ pub fn init_logger() -> PathBuf {
         log::set_max_level(LevelFilter::Debug);
     }
 
-    log::info!("Hotkeys logger initialized (log file: {})", path.display());
+    log::info!("Logger initialized (log file: {})", path.display());
     path
 }
 
@@ -131,6 +133,54 @@ pub fn recent_logs() -> Vec<LogEntry> {
         .and_then(|m| m.lock().ok())
         .map(|state| state.entries.iter().cloned().collect())
         .unwrap_or_default()
+}
+
+pub fn read_log_file_tail(max_lines: usize) -> Vec<LogEntry> {
+    let path = log_file_path();
+    let Ok(file) = File::open(&path) else {
+        return recent_logs();
+    };
+    let reader = BufReader::new(file);
+    let mut ring = VecDeque::with_capacity(max_lines.min(MAX_MEMORY_ENTRIES));
+    for line in reader.lines().map_while(Result::ok) {
+        if let Some(entry) = parse_log_line(&line) {
+            if ring.len() >= max_lines {
+                ring.pop_front();
+            }
+            ring.push_back(entry);
+        }
+    }
+    if ring.is_empty() {
+        recent_logs()
+    } else {
+        ring.into_iter().collect()
+    }
+}
+
+pub fn parse_log_line(line: &str) -> Option<LogEntry> {
+    // Expected format: "[YYYY-MM-DD HH:MM:SS.mmm LEVEL] message"
+    let rest = line.strip_prefix('[')?;
+    let close_idx = rest.find(']')?;
+    let header = &rest[..close_idx];
+    let message = rest[close_idx + 1..].trim_start().to_string();
+
+    let mut parts = header.split_whitespace();
+    let date = parts.next()?;
+    let time = parts.next()?;
+    let level_str = parts.next()?;
+    let level = match level_str {
+        "ERROR" => Level::Error,
+        "WARN" => Level::Warn,
+        "INFO" => Level::Info,
+        "DEBUG" => Level::Debug,
+        "TRACE" => Level::Trace,
+        _ => Level::Info,
+    };
+    Some(LogEntry {
+        timestamp: format!("{} {}", date, time),
+        level,
+        message,
+    })
 }
 
 pub fn clear_memory_logs() {
@@ -189,11 +239,20 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_log_line_roundtrip() {
+        let entry = parse_log_line("[2026-11-28 04:00:00.123 WARN ] Test warning message")
+            .expect("parse valid log line");
+        assert_eq!(entry.timestamp, "2026-11-28 04:00:00.123");
+        assert_eq!(entry.level, Level::Warn);
+        assert_eq!(entry.message, "Test warning message");
+    }
+
+    #[test]
     fn test_ring_buffer_captures_and_caps_entries() {
         let tmp = std::env::temp_dir().join(format!("hotkeys_log_test_{}", uuid::Uuid::new_v4()));
         let path = tmp.join("hotkeys.log");
         let _ = LOGGER_STATE.get_or_init(|| {
-            let file = open_log_file(&path);
+            let file = open_log_file(&path, true);
             Mutex::new(LoggerState {
                 entries: VecDeque::with_capacity(MAX_MEMORY_ENTRIES),
                 log_path: path.clone(),

@@ -17,6 +17,7 @@ pub enum TrayCommand {
 struct TraySharedState {
     tx: Option<Sender<TrayCommand>>,
     repaint_ctx: Option<egui::Context>,
+    wake_tx: Option<Sender<()>>,
     global_enabled: bool,
 }
 
@@ -78,6 +79,13 @@ impl TrayController {
         }
     }
 
+    #[allow(dead_code)]
+    pub fn attach_wake_tx(&self, wake_tx: Sender<()>) {
+        if let Ok(mut state) = shared_tray_state().lock() {
+            state.wake_tx = Some(wake_tx);
+        }
+    }
+
     pub fn try_recv(&self) -> Option<TrayCommand> {
         self.rx.try_recv().ok()
     }
@@ -118,6 +126,9 @@ fn emit_tray_command(cmd: TrayCommand) {
         }
         if let Some(ctx) = &state.repaint_ctx {
             ctx.request_repaint();
+        }
+        if let Some(wake_tx) = &state.wake_tx {
+            let _ = wake_tx.send(());
         }
     }
 }

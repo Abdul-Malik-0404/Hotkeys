@@ -96,6 +96,10 @@ impl HotkeyEngine {
         self.backend.status_summary()
     }
 
+    pub fn set_wake_sender(&mut self, tx: std::sync::mpsc::Sender<()>) {
+        self.backend.set_wake_sender(tx);
+    }
+
     pub fn find_duplicate_triggers(rules: &[KeybindRule]) -> Vec<String> {
         let mut seen: HashMap<KeyCombo, &str> = HashMap::new();
         let mut warnings = Vec::new();

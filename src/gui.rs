@@ -1,12 +1,13 @@
 use std::path::PathBuf;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use eframe::egui::{self, Color32, Margin, RichText, Rounding, Stroke};
 use uuid::Uuid;
 
 use crate::config::AppConfig;
 use crate::engine::HotkeyEngine;
-use crate::logger;
+use crate::ipc::{DaemonProxyHandle, GuiControlEvent};
+use crate::logger::{self, LogEntry};
 use crate::model::{KeyCombo, KeybindRule, LogicalKey, Modifiers};
 use crate::tray::{TrayCommand, TrayController};
 
@@ -72,7 +73,8 @@ enum LogLevelFilter {
 
 pub struct HotkeysApp {
     engine: HotkeyEngine,
-    tray: TrayController,
+    tray: Option<TrayController>,
+    proxy: Option<DaemonProxyHandle>,
     recording: Option<RecordingTarget>,
     status_message: Option<String>,
     config_path_display: String,
@@ -81,17 +83,26 @@ pub struct HotkeysApp {
     search_query: String,
     show_logs: bool,
     log_filter: LogLevelFilter,
+    cached_logs: Vec<LogEntry>,
+    last_log_refresh: Instant,
 }
 
 impl HotkeysApp {
-    pub fn new(engine: HotkeyEngine, tray: TrayController, log_path: PathBuf) -> Self {
+    pub fn new(
+        engine: HotkeyEngine,
+        tray: Option<TrayController>,
+        proxy: Option<DaemonProxyHandle>,
+        log_path: PathBuf,
+    ) -> Self {
         let config_path_display = AppConfig::default_config_path()
             .map(|p| p.display().to_string())
             .unwrap_or_else(|_| "config.toml".to_string());
+        let cached_logs = logger::read_log_file_tail(500);
 
         Self {
             engine,
             tray,
+            proxy,
             recording: None,
             status_message: None,
             config_path_display,
@@ -100,15 +111,13 @@ impl HotkeysApp {
             search_query: String::new(),
             show_logs: true,
             log_filter: LogLevelFilter::All,
+            cached_logs,
+            last_log_refresh: Instant::now(),
         }
     }
 
     fn persist_and_sync(&mut self) {
-        if let Err(err) = self.engine.sync_backend() {
-            let msg = format!("Backend sync error: {}", err);
-            log::error!("{}", msg);
-            self.status_message = Some(msg);
-        }
+        // Save config.toml BEFORE syncing so a separate daemon process reads the latest rules.
         match self.engine.config.save() {
             Ok(()) => {
                 self.status_message = Some("Saved configuration.".to_string());
@@ -119,8 +128,14 @@ impl HotkeysApp {
                 self.status_message = Some(msg);
             }
         }
-        self.tray
-            .set_global_enabled(self.engine.config.global_enabled);
+        if let Err(err) = self.engine.sync_backend() {
+            let msg = format!("Backend sync error: {}", err);
+            log::error!("{}", msg);
+            self.status_message = Some(msg);
+        }
+        if let Some(tray) = &self.tray {
+            tray.set_global_enabled(self.engine.config.global_enabled);
+        }
     }
 
     fn handle_key_recording(&mut self, ctx: &egui::Context) {
@@ -190,26 +205,44 @@ impl HotkeysApp {
     }
 
     fn handle_tray_commands(&mut self, ctx: &egui::Context) {
-        while let Some(cmd) = self.tray.try_recv() {
-            match cmd {
-                TrayCommand::ShowWindow => {
-                    log::info!("Restoring window from system tray");
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+        if let Some(tray) = &self.tray {
+            let cmds: Vec<_> = std::iter::from_fn(|| tray.try_recv()).collect();
+            for cmd in cmds {
+                match cmd {
+                    TrayCommand::ShowWindow => {
+                        log::info!("Restoring window from system tray");
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                    }
+                    TrayCommand::ToggleGlobalEnabled => {
+                        self.engine.config.global_enabled = !self.engine.config.global_enabled;
+                        log::info!(
+                            "Toggled global hotkeys from tray -> enabled={}",
+                            self.engine.config.global_enabled
+                        );
+                        self.persist_and_sync();
+                    }
+                    TrayCommand::Quit => {
+                        log::info!("Quit requested from system tray");
+                        self.allow_quit = true;
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
                 }
-                TrayCommand::ToggleGlobalEnabled => {
-                    self.engine.config.global_enabled = !self.engine.config.global_enabled;
-                    log::info!(
-                        "Toggled global hotkeys from tray -> enabled={}",
-                        self.engine.config.global_enabled
-                    );
-                    self.persist_and_sync();
-                }
-                TrayCommand::Quit => {
-                    log::info!("Quit requested from system tray");
-                    self.allow_quit = true;
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            }
+        }
+
+        if let Some(proxy) = &self.proxy {
+            while let Ok(evt) = proxy.control_rx.try_recv() {
+                match evt {
+                    GuiControlEvent::Focus => {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                    }
+                    GuiControlEvent::SetGlobalEnabled(enabled) => {
+                        self.engine.config.global_enabled = enabled;
+                    }
                 }
             }
         }
@@ -287,6 +320,11 @@ impl HotkeysApp {
     }
 
     fn render_logs_panel(&mut self, ctx: &egui::Context) {
+        if self.last_log_refresh.elapsed() >= Duration::from_millis(250) {
+            self.cached_logs = logger::read_log_file_tail(500);
+            self.last_log_refresh = Instant::now();
+        }
+
         egui::TopBottomPanel::bottom("logs_panel")
             .resizable(true)
             .default_height(175.0)
@@ -298,8 +336,9 @@ impl HotkeysApp {
                     .inner_margin(Margin::symmetric(12.0, 8.0)),
             )
             .show(ctx, |ui| {
-                let logs = logger::recent_logs();
-                let filtered: Vec<_> = logs
+                let mut clear_clicked = false;
+                let filtered: Vec<_> = self
+                    .cached_logs
                     .iter()
                     .filter(|entry| match self.log_filter {
                         LogLevelFilter::All => true,
@@ -326,7 +365,7 @@ impl HotkeysApp {
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.small_button("Clear").clicked() {
-                            logger::clear_memory_logs();
+                            clear_clicked = true;
                         }
                         if ui.small_button("Copy Logs").clicked() {
                             let dump = filtered
@@ -396,6 +435,11 @@ impl HotkeysApp {
                                 }
                             });
                     });
+
+                if clear_clicked {
+                    logger::clear_memory_logs();
+                    self.cached_logs.clear();
+                }
             });
     }
 }
@@ -409,19 +453,26 @@ impl eframe::App for HotkeysApp {
             log::error!("{}", msg);
             self.status_message = Some(msg);
         }
-        ctx.request_repaint_after(Duration::from_millis(50));
 
-        // Hide to system tray on window close unless Quit was chosen
+        let is_minimized = ctx.input(|i| i.viewport().minimized.unwrap_or(false));
+        if self.recording.is_some() {
+            ctx.request_repaint_after(Duration::from_millis(50));
+        } else if !is_minimized {
+            ctx.request_repaint_after(Duration::from_millis(250));
+        }
+
+        // On Windows (--gui child process), closing the window exits only the GUI process
+        // so the background daemon keeps running at ~0% CPU and minimal RAM.
         if ctx.input(|i| i.viewport().close_requested()) && !self.allow_quit {
-            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            if cfg!(target_os = "windows") {
-                ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+            if self.proxy.is_some() {
+                log::info!("Closing GUI window; background daemon remains active");
             } else {
+                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
                 ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+                log::info!("Window minimized; hotkeys remain active");
+                self.status_message =
+                    Some("Minimized to background. Hotkeys remain active.".to_string());
             }
-            log::info!("Window minimized to system tray; hotkeys remain active");
-            self.status_message =
-                Some("Minimized to system tray. Hotkeys remain active.".to_string());
         }
 
         egui::TopBottomPanel::top("top_bar")
@@ -478,6 +529,9 @@ impl eframe::App for HotkeysApp {
                             .on_hover_text("Stop hotkey listener and exit completely")
                             .clicked()
                         {
+                            if let Some(proxy) = &self.proxy {
+                                proxy.send_quit_daemon();
+                            }
                             self.allow_quit = true;
                             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                         }

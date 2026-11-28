@@ -27,6 +27,9 @@ pub trait PlatformBackend: Send {
 
     /// Human-readable status string shown in the GUI footer/banner.
     fn status_summary(&self) -> String;
+
+    /// Optional wake channel notified whenever a hotkey fires asynchronously.
+    fn set_wake_sender(&mut self, _wake_tx: std::sync::mpsc::Sender<()>) {}
 }
 
 pub fn create_default_backend() -> Box<dyn PlatformBackend> {
