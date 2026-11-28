@@ -101,7 +101,7 @@ fn send_sync_result(gui_child: &mut Option<GuiChild>, engine: &HotkeyEngine) {
 #[cfg(target_os = "windows")]
 mod single_instance {
     use std::ffi::c_void;
-    use std::ptr::{null, null_mut};
+    use std::ptr::null;
     use std::sync::mpsc::Sender;
     use std::thread;
 
